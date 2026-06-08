@@ -140,9 +140,15 @@
 
     <script type="module">
 
+        import {
+            getAuth,
+            signInWithEmailAndPassword
+        } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
+        const auth = getAuth(app);
         const firebaseConfig = {
             apiKey: "AIzaSyCMlFfXrqLagyMt_mlmZksJg3K6SfSkC2M",
             authDomain: "mappa-tavoli.firebaseapp.com",
@@ -155,6 +161,24 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+
+        async function login(email, password) {
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                console.log("loggato");
+            } catch (e) {
+                console.log(e.message);
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "login.html"; // o una pagina login
+            } else {
+                console.log("utente ok:", user.email);
+                caricaTavoli(); // carica solo se loggato
+            }
+        });
 
         async function salvaTavoli() {
             try {
@@ -464,7 +488,7 @@
         window.chiudiModalElimina = chiudiModalElimina;
         window.confermaEliminaTavolo = confermaEliminaTavolo;
         // Inizializza l'applicazione al caricamento della pagina
-        window.onload = caricaTavoli;
+        //window.onload = caricaTavoli;
     </script>
 </body>
 
