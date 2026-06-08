@@ -148,7 +148,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
-        const auth = getAuth(app);
         const firebaseConfig = {
             apiKey: "AIzaSyCMlFfXrqLagyMt_mlmZksJg3K6SfSkC2M",
             authDomain: "mappa-tavoli.firebaseapp.com",
@@ -160,6 +159,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
 
         async function login(email, password) {
@@ -173,10 +173,9 @@
 
         onAuthStateChanged(auth, (user) => {
             if (!user) {
-                window.location.href = "login.html"; // o una pagina login
+                window.location.href = "login.html";
             } else {
-                console.log("utente ok:", user.email);
-                caricaTavoli(); // carica solo se loggato
+                caricaTavoli();
             }
         });
 
