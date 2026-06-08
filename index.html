@@ -163,6 +163,8 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        caricaTavoli();
+
         async function login(email, password) {
             try {
                 await signInWithEmailAndPassword(auth, email, password);
