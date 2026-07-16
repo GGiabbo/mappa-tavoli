@@ -1,489 +1,898 @@
 <!DOCTYPE html>
-<html lang="it">
-
+<html lang="it" class="h-full bg-slate-950 text-slate-100">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mappa Tavoli</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Animazioni personalizzate */
-        .pop-in {
-            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes pop {
-            0% {
-                transform: scale(0.95);
-                opacity: 0;
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        /* Grid item transition */
-        .grid-item {
-            transition: all 0.3s ease-in-out;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mappa Tavoli Pro - Gestione Sala Ristorante</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2 family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    
+    .floor-grid {
+      background-size: 30px 30px;
+      background-image: 
+        linear-gradient(to right, rgba(51, 65, 85, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(51, 65, 85, 0.12) 1px, transparent 1px);
+    }
+    .no-select { user-select: none; -webkit-user-select: none; }
+    
+    /* Animazione fluida sidebar */
+    #left-sidebar { 
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-right-width 0.3s; 
+      width: 320px;
+    }
+    #left-sidebar.collapsed { width: 0px !important; border-right-width: 0px !important; overflow: hidden; }
+    /* Previene lo schiacciamento del contenuto interno durante la chiusura */
+    .sidebar-inner { width: 320px; }
+  </style>
 </head>
+<body class="h-full flex flex-col overflow-hidden">
 
-<body class="bg-gray-50 text-gray-800 font-sans p-4 md:p-8 min-h-screen">
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4 z-10 shrink-0">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleSidebar()" class="bg-gradient-to-tr from-amber-500 to-rose-500 p-2.5 rounded-xl shadow-lg shadow-amber-500/10 hover:shadow-amber-500/30 transition-all flex items-center justify-center cursor-pointer" title="Mostra/Nascondi Pannello Laterale">
+        <i class="fa-solid fa-utensils text-xl text-white" id="main-sidebar-icon"></i>
+      </button>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          RistoMap <span class="text-xs bg-amber-500/10 text-amber-400 font-medium px-2 py-0.5 rounded-full border border-amber-500/20">PRO</span>
+        </h1>
+        <p class="text-xs text-slate-400">Gestione Sala & Posti in Tempo Reale</p>
+      </div>
+    </div>
 
-    <div class="max-w-5xl mx-auto">
-        <!-- Intestazione -->
-        <header
-            class="mb-8 flex flex-col md:flex-row justify-between items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div>
-                <h1 class="text-3xl font-black text-gray-900 mb-1">
-                    <i class="fas fa-store text-indigo-600 mr-2"></i> Gestione Sala
-                </h1>
-                <p class="text-gray-500 text-sm">Controlla e personalizza i posti a sedere in tempo reale</p>
-            </div>
+    <!-- STATISTICHE RAPIDE -->
+    <div class="hidden lg:flex items-center gap-6 bg-slate-950/50 px-5 py-2 rounded-2xl border border-slate-800/80">
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 text-sm"><i class="fa-solid fa-users"></i></div>
+        <div><div class="text-xs text-slate-400">Clienti Presenti</div><div class="text-sm font-semibold text-white" id="stat-total-clients">0</div></div>
+      </div>
+      <div class="h-8 w-px bg-slate-800"></div>
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 text-sm"><i class="fa-solid fa-chair"></i></div>
+        <div><div class="text-xs text-slate-400">Tasso Occupazione</div><div class="text-sm font-semibold text-white" id="stat-occupancy-rate">0%</div></div>
+      </div>
+      <div class="h-8 w-px bg-slate-800"></div>
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400 text-sm"><i class="fa-solid fa-circle-check"></i></div>
+        <div><div class="text-xs text-slate-400">Tavoli Liberi</div><div class="text-sm font-semibold text-white" id="stat-free-tables">0 / 0</div></div>
+      </div>
+    </div>
 
-            <div class="flex flex-wrap gap-4 items-center justify-center">
-                <!-- Statistiche -->
-                <div class="flex gap-2">
-                    <div class="bg-indigo-50 px-4 py-2 rounded-xl flex flex-col items-center min-w-[100px]">
-                        <span class="text-[10px] font-bold text-indigo-400 uppercase">Clienti</span>
-                        <span id="totale-persone" class="text-2xl font-black text-indigo-700">0</span>
-                    </div>
-                    <div class="bg-emerald-50 px-4 py-2 rounded-xl flex flex-col items-center min-w-[100px]">
-                        <span class="text-[10px] font-bold text-emerald-500 uppercase">Tavoli Liberi</span>
-                        <span id="tavoli-liberi" class="text-2xl font-black text-emerald-600">6/6</span>
-                    </div>
-                </div>
+    <!-- AZIONI GENERALI -->
+    <div class="flex items-center gap-3">
+      <!-- Selettore Sala -->
+      <select id="room-selector" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500 transition-colors font-medium"></select>
 
-                <!-- Pulsante Modifica Sala -->
-                <button id="btn-modifica" onclick="toggleModalitaModifica()"
-                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-md flex items-center gap-2 text-sm">
-                    <i class="fas fa-sliders-h"></i>
-                    <span>Personalizza Sala</span>
-                </button>
-            </div>
-        </header>
+      <!-- Selettore Stile Tavoli -->
+      <select id="style-selector" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors font-medium">
+        <option value="standard">Stile: Standard</option>
+        <option value="sagra">Stile: Sagra</option>
+      </select>
 
-        <!-- Legenda (Nascondi in modalità modifica per pulizia visiva) -->
-        <div id="legenda-container"
-            class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8 flex flex-wrap gap-3 justify-center text-xs font-medium transition-all duration-300">
-            <span class="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                <div class="w-3 h-3 rounded-full bg-white border border-gray-300"></div> Vuoto (0)
-            </span>
-            <span
-                class="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200 text-green-700">
-                <div class="w-3 h-3 rounded-full bg-green-400"></div> Tranquillo (1-3)
-            </span>
-            <span
-                class="flex items-center gap-1.5 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-200 text-yellow-700">
-                <div class="w-3 h-3 rounded-full bg-yellow-400"></div> Medio (4-5)
-            </span>
-            <span
-                class="flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200 text-orange-700">
-                <div class="w-3 h-3 rounded-full bg-orange-500"></div> Pieno (6-7)
-            </span>
-            <span class="flex items-center gap-1.5 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 text-red-700">
-                <div class="w-3 h-3 rounded-full bg-red-500"></div> Completo (8)
-            </span>
+      <button id="btn-toggle-design" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 border border-slate-700">
+        <i class="fa-solid fa-pen-ruler"></i> <span>Personalizza Sala</span>
+      </button>
+
+      <!-- Dropdown Altro -->
+      <div class="relative group">
+        <button class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl border border-slate-700 text-xs transition-colors"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+        <div class="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-xl hidden group-hover:block hover:block z-50 p-1">
+          <button onclick="exportLayout()" class="w-full text-left text-xs px-3 py-2 hover:bg-slate-800 rounded-lg text-slate-300 flex items-center gap-2"><i class="fa-solid fa-file-export text-slate-400"></i> Esporta Layout</button>
+          <label class="w-full text-left text-xs px-3 py-2 hover:bg-slate-800 rounded-lg text-slate-300 flex items-center gap-2 cursor-pointer"><i class="fa-solid fa-file-import text-slate-400"></i> Importa Layout<input type="file" id="import-file" class="hidden" accept=".json" onchange="importLayout(event)"></label>
+          <hr class="border-slate-800 my-1"><button onclick="triggerResetConfirmation()" class="w-full text-left text-xs px-3 py-2 hover:bg-slate-800 rounded-lg text-rose-400 flex items-center gap-2"><i class="fa-solid fa-rotate-right"></i> Ripristina Demo</button>
         </div>
+      </div>
+    </div>
+  </header>
 
-        <!-- Banner Informativo Modalità Modifica -->
-        <div id="banner-modifica"
-            class="hidden bg-amber-50 border-2 border-dashed border-amber-300 p-4 rounded-xl mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 pop-in">
-            <div class="flex items-center gap-3">
-                <div
-                    class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
-                    <i class="fas fa-info-circle text-lg"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-amber-900 text-sm">Modalità Personalizzazione Attiva</h3>
-                    <p class="text-amber-700 text-xs">Rinomina i tavoli, spostali con le frecce o aggiungine di nuovi.
-                    </p>
-                </div>
-            </div>
-            <button onclick="toggleModalitaModifica()"
-                class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors">
-                <i class="fas fa-check mr-1"></i> Salva e Chiudi
+  <!-- MAIN BODY SPLIT -->
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- AVVISO MODALITÀ DESIGN ATTIVA -->
+    <div id="design-banner" class="absolute top-0 left-0 right-0 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-4 py-2.5 text-center text-xs font-semibold flex items-center justify-center gap-2 z-20 shadow-md hidden transform translate-y-0 transition-transform">
+      <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i>
+      <span>Modalità Personalizzazione Attiva: trascina i tavoli per spostarli, o cliccaci sopra per configurarli.</span>
+      <button onclick="toggleDesignMode(false)" class="bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded ml-2 transition-colors">Salva e Chiudi</button>
+    </div>
+
+    <!-- SIDEBAR SINISTRA: Gestione Tavoli & Lista -->
+    <section id="left-sidebar" class="bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+      <div class="sidebar-inner flex-1 flex flex-col h-full overflow-hidden">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <button onclick="toggleSidebar()" class="hover:bg-slate-800 p-1.5 -ml-1.5 rounded-lg transition-colors cursor-pointer group" title="Chiudi Pannello">
+              <i class="fa-solid fa-rectangle-list text-amber-500 text-base group-hover:scale-110 transition-transform"></i>
             </button>
+            Controllo Tavoli
+          </h2>
+          <span id="tables-count" class="text-xs bg-slate-800 text-slate-300 font-semibold px-2 py-0.5 rounded-full">0 Tavoli</span>
         </div>
 
-        <!-- Griglia Tavoli -->
-        <div id="tavoli-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Generati dinamicamente via JS -->
-        </div>
-    </div>
-
-    <!-- Modal di conferma eliminazione personalizzato (no alert) -->
-    <div id="modal-conferma"
-        class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white p-6 rounded-2xl max-w-sm w-full shadow-xl border border-gray-100 pop-in text-center">
-            <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-trash-alt text-2xl"></i>
+        <!-- AGGIUNGI NUOVO TAVOLO (Design Mode) -->
+        <div id="add-table-section" class="p-4 border-b border-slate-800 bg-slate-950/40 hidden">
+          <h3 class="text-xs font-semibold text-slate-300 mb-3"><i class="fa-solid fa-plus text-indigo-400 mr-1"></i> Aggiungi Nuovo Tavolo</h3>
+          <div class="space-y-3">
+            <div><label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Nome / Numero Tavolo</label><input type="text" id="new-table-name" placeholder="Es. Tavolo 12" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500"></div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Forma</label><select id="new-table-shape" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-indigo-500"><option value="circle">Rotondo</option><option value="rect">Rettangolare</option></select></div>
+              <div><label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Max Persone</label><div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2 py-1"><button onclick="adjustNewSeats(-1)" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-minus text-[10px]"></i></button><input type="number" id="new-table-seats" value="4" min="1" max="16" class="w-full bg-transparent border-0 text-center text-xs text-slate-100 font-semibold focus:ring-0 p-0 select-none"><button onclick="adjustNewSeats(1)" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-plus text-[10px]"></i></button></div></div>
             </div>
-            <h3 class="text-lg font-black text-gray-900 mb-2">Eliminare questo tavolo?</h3>
-            <p class="text-gray-500 text-sm mb-6">L'azione è irreversibile e rimuoverà il tavolo dalla sala.</p>
-            <div class="flex gap-3 justify-center">
-                <button onclick="chiudiModalElimina()"
-                    class="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm transition-colors flex-1">
-                    Annulla
-                </button>
-                <button id="btn-conferma-elimina"
-                    class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-colors flex-1">
-                    Elimina
-                </button>
-            </div>
+            <button onclick="createNewTable()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2 px-3 rounded-lg shadow-lg shadow-indigo-600/15 transition-all flex items-center justify-center gap-1.5"><i class="fa-solid fa-square-plus"></i> Posiziona in Sala</button>
+          </div>
         </div>
+
+        <!-- DETTAGLI TAVOLO SELEZIONATO -->
+        <div id="edit-table-section" class="p-4 border-b border-slate-800 bg-indigo-950/10 hidden">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-semibold text-slate-300"><i class="fa-solid fa-sliders text-amber-500 mr-1"></i> Configura Tavolo</h3>
+            <button onclick="deselectTable()" class="text-slate-400 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="space-y-3">
+            <div><label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Nome Tavolo</label><input type="text" id="edit-table-name" oninput="updateSelectedTableFromForm()" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"></div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Forma Tavolo</label><select id="edit-table-shape" onchange="updateSelectedTableFromForm()" class="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-amber-500"><option value="circle">Rotondo</option><option value="rect">Rettangolare</option></select></div>
+              <div><label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Max Capienza (Sedie)</label><div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2 py-1"><button onclick="adjustSelectedSeats(-1)" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-minus text-[10px]"></i></button><input type="number" id="edit-table-seats" value="4" min="1" max="16" readonly class="w-full bg-transparent border-0 text-center text-xs text-slate-100 font-semibold focus:ring-0 p-0"><button onclick="adjustSelectedSeats(1)" class="text-slate-400 hover:text-white px-1"><i class="fa-solid fa-plus text-[10px]"></i></button></div></div>
+            </div>
+
+            <!-- CONTROLLO PERSONE SEDUTE (Senza doppio clic) -->
+            <div class="pt-1">
+              <label class="block text-[10px] text-emerald-400 uppercase font-semibold mb-1">Persone Sedute</label>
+              <div class="flex items-center bg-emerald-900/10 border border-emerald-500/20 rounded-lg px-2 py-1.5">
+                <button onclick="adjustOccupiedSeats(-1)" class="text-emerald-500 hover:text-emerald-300 px-3"><i class="fa-solid fa-minus text-[12px]"></i></button>
+                <div class="w-full flex justify-center">
+                  <span id="occupied-val-label" class="text-emerald-400 font-bold text-sm">0</span>
+                </div>
+                <button onclick="adjustOccupiedSeats(1)" class="text-emerald-500 hover:text-emerald-300 px-3"><i class="fa-solid fa-plus text-[12px]"></i></button>
+              </div>
+            </div>
+
+            <!-- TASTO SVUOTA COMPLETAMENTE -->
+            <div class="pt-1">
+              <button onclick="emptySelectedTable()" class="w-full bg-amber-500/10 hover:bg-amber-500 hover:text-slate-900 text-amber-500 text-xs font-bold py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 border border-amber-500/20"><i class="fa-solid fa-broom"></i> Svuota Tavolo</button>
+            </div>
+            
+            <!-- CONTROLLO SCALA (Con doppio clic) -->
+            <div class="pt-2">
+              <label class="flex justify-between text-[10px] uppercase font-bold text-slate-400 mb-1">
+                <span>Dimensione (Scala)</span>
+                <div class="flex items-center">
+                  <span id="scale-val-label" class="text-indigo-400 cursor-pointer hover:text-indigo-300" ondblclick="enableScaleEdit()" title="Doppio clic per inserire valore manualmente">100%</span>
+                  <input type="number" id="scale-val-input" class="hidden text-indigo-400 bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-right w-14 text-[10px] outline-none focus:border-indigo-500" onblur="saveScaleEdit()" onkeydown="if(event.key === 'Enter') this.blur()">
+                </div>
+              </label>
+              <input type="range" id="edit-table-scale" min="10" max="300" value="100" oninput="updateSelectedTableFromForm()" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            </div>
+
+            <!-- Pulsantiera Spostamento Fine -->
+            <div id="fine-movement-controls" class="pt-2">
+              <label class="block text-[10px] text-slate-400 uppercase font-semibold mb-1">Sposta di Precisione</label>
+              <div class="grid grid-cols-3 gap-1 max-w-[120px] mx-auto"><div></div><button onclick="moveSelectedTable('up')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-1.5 rounded text-xs flex justify-center items-center"><i class="fa-solid fa-chevron-up"></i></button><div></div><button onclick="moveSelectedTable('left')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-1.5 rounded text-xs flex justify-center items-center"><i class="fa-solid fa-chevron-left"></i></button><div class="text-[9px] text-slate-500 flex items-center justify-center">Sp</div><button onclick="moveSelectedTable('right')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-1.5 rounded text-xs flex justify-center items-center"><i class="fa-solid fa-chevron-right"></i></button><div></div><button onclick="moveSelectedTable('down')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-1.5 rounded text-xs flex justify-center items-center"><i class="fa-solid fa-chevron-down"></i></button><div></div></div>
+            </div>
+            <div class="pt-2"><button onclick="triggerDeleteConfirmation()" class="w-full bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 text-xs font-semibold py-2 px-3 rounded-lg transition-all flex items-center justify-center gap-2 border border-rose-500/20"><i class="fa-solid fa-trash-can"></i> Rimuovi Tavolo</button></div>
+          </div>
+        </div>
+
+        <!-- LISTA FILTRABILE TAVOLI -->
+        <div class="p-3 border-b border-slate-800 bg-slate-950/20">
+          <div class="relative"><span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500 text-xs"><i class="fa-solid fa-magnifying-glass"></i></span><input type="text" id="search-tables" oninput="renderTablesList()" placeholder="Cerca tavolo..." class="w-full bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-slate-700"></div>
+        </div>
+        <div id="tables-list-container" class="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+          <!-- Renderizzato via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- AREA CENTRALE: Mappa Sala Interattiva -->
+    <section class="flex-1 bg-slate-950 flex flex-col overflow-hidden relative">
+      <div class="flex-1 overflow-auto p-4 flex items-center justify-center relative">
+        <div id="floor-plan-map" class="w-[1000px] h-[650px] bg-[#121824] rounded-3xl border border-slate-800 relative floor-grid shadow-inner transition-colors overflow-hidden no-select">
+          <!-- SPAZIO DI LAVORO SVG UNIFICATO -->
+          <svg id="floor-plan-svg" viewBox="0 0 1000 650" class="w-full h-full overflow-visible">
+            <defs>
+              <radialGradient id="tableWoodGradient" cx="50%" cy="50%" r="70%">
+                <stop offset="0%" stop-color="#334155" />
+                <stop offset="100%" stop-color="#1e293b" />
+              </radialGradient>
+            </defs>
+            <g id="svg-tables-group"></g>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- POPUP CONFERMA ELIMINAZIONE TAVOLO -->
+  <div id="delete-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl transform scale-95 transition-transform duration-300">
+      <div class="text-rose-500 mb-4 text-center"><i class="fa-solid fa-circle-exclamation text-4xl"></i></div>
+      <h3 class="text-base font-bold text-white text-center mb-2">Eliminare questo tavolo?</h3>
+      <p class="text-xs text-slate-400 text-center mb-6">L'azione rimuoverà definitivamente il tavolo "<span id="delete-table-name-span" class="font-semibold text-slate-200"></span>".</p>
+      <div class="flex gap-3">
+        <button onclick="closeDeleteModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors">Annulla</button>
+        <button onclick="confirmDeleteTable()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors shadow-lg shadow-rose-600/20">Sì, Rimuovi</button>
+      </div>
     </div>
+  </div>
 
-    <script type="module">
+  <!-- POPUP CONFERMA RIPRISTINO DEMO -->
+  <div id="reset-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl transform scale-95 transition-transform duration-300">
+      <div class="text-amber-500 mb-4 text-center"><i class="fa-solid fa-triangle-exclamation text-4xl"></i></div>
+      <h3 class="text-base font-bold text-white text-center mb-2">Ripristinare i dati di fabbrica?</h3>
+      <p class="text-xs text-slate-400 text-center mb-6">Tutte le modifiche attuali ai tavoli e la disposizione andranno perse.</p>
+      <div class="flex gap-3">
+        <button onclick="closeResetModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors">Annulla</button>
+        <button onclick="confirmResetToDemo()" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors shadow-lg shadow-amber-600/20">Sì, Ripristina</button>
+      </div>
+    </div>
+  </div>
 
-        import {
-            getAuth,
-            signInWithEmailAndPassword,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  <!-- NOTIFICHE TOAST -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
 
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  <!-- JS LOGIC -->
+  <script>
+    const APP_STORAGE_KEY = 'RISTOMAP_PRO_DATA_V5';
+    
+    // Dati iniziali di esempio
+    const DEMO_DATA = {
+      globalSettings: { tableStyle: 'standard' },
+      rooms: [
+        { id: 'sala-interna', name: 'Sala Principale' },
+        { id: 'terrazza', name: 'Terrazzo Panoramico' },
+        { id: 'giardino', name: 'Giardino Estivo' }
+      ],
+      currentRoomId: 'sala-interna',
+      tables: [
+        { id: 't1', roomId: 'sala-interna', name: 'Tavolo 1', x: 150, y: 150, maxSeats: 4, occupiedSeats: [false, false, false, false], shape: 'circle', scale: 1 },
+        { id: 't2', roomId: 'sala-interna', name: 'Tavolo 2', x: 450, y: 150, maxSeats: 6, occupiedSeats: [true, false, true, false, false, false], shape: 'rect', scale: 1 },
+        { id: 't3', roomId: 'sala-interna', name: 'Tavolo Privé', x: 800, y: 180, maxSeats: 8, occupiedSeats: [true, true, true, false, true, false, false, false], shape: 'circle', scale: 1 },
+        { id: 't4', roomId: 'sala-interna', name: 'Tavolo 4', x: 150, y: 450, maxSeats: 4, occupiedSeats: [true, true, true, true], shape: 'rect', scale: 1 },
+        { id: 't5', roomId: 'sala-interna', name: 'Tavolo 5', x: 480, y: 460, maxSeats: 2, occupiedSeats: [false, false], shape: 'circle', scale: 1 },
+        { id: 't6', roomId: 'sala-interna', name: 'Tavolo Bar', x: 800, y: 460, maxSeats: 5, occupiedSeats: [false, false, false, false, false], shape: 'rect', scale: 1 }
+      ]
+    };
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCMlFfXrqLagyMt_mlmZksJg3K6SfSkC2M",
-            authDomain: "mappa-tavoli.firebaseapp.com",
-            projectId: "mappa-tavoli",
-            storageBucket: "mappa-tavoli.firebasestorage.app",
-            messagingSenderId: "864129761525",
-            appId: "1:864129761525:web:cba148febe1a1e388a85bc",
-            measurementId: "G-N0YH07X5K3"
-        };
+    let appData = { ...DEMO_DATA };
+    let isDesignMode = false;
+    let selectedTableId = null;
+    let draggingTableId = null;
+    let dragOffset = { x: 0, y: 0 };
+    let tableToDeleteId = null;
+    let isSidebarCollapsed = false;
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+    window.addEventListener('load', () => {
+      loadData();
+      initializeRoomSelector();
+      initializeStyleSelector();
+      setupEventListeners();
+      renderRoom();
+      updateGlobalStats();
+    });
 
-        caricaTavoli();
+    function loadData() {
+      const stored = localStorage.getItem(APP_STORAGE_KEY);
+      if (stored) {
+        try {
+          appData = JSON.parse(stored);
+          if (!appData.rooms) appData.rooms = [...DEMO_DATA.rooms];
+          if (!appData.globalSettings) appData.globalSettings = { tableStyle: 'standard' };
+        } catch (e) {
+          appData = { ...DEMO_DATA };
+        }
+      } else {
+        appData = { ...DEMO_DATA };
+      }
+    }
 
-        async function login(email, password) {
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                console.log("loggato");
-            } catch (e) {
-                console.log(e.message);
+    function saveData() {
+      localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(appData));
+    }
+
+    function initializeRoomSelector() {
+      const selector = document.getElementById('room-selector');
+      selector.innerHTML = '';
+      appData.rooms.forEach(room => {
+        const option = document.createElement('option');
+        option.value = room.id;
+        option.textContent = room.name;
+        if (room.id === appData.currentRoomId) option.selected = true;
+        selector.appendChild(option);
+      });
+      selector.addEventListener('change', (e) => {
+        appData.currentRoomId = e.target.value;
+        deselectTable();
+        renderRoom();
+        updateGlobalStats();
+        saveData();
+      });
+    }
+
+    function initializeStyleSelector() {
+      const selector = document.getElementById('style-selector');
+      if (selector) {
+        selector.value = appData.globalSettings?.tableStyle || 'standard';
+        selector.addEventListener('change', (e) => {
+          if (!appData.globalSettings) appData.globalSettings = { tableStyle: 'standard' };
+          appData.globalSettings.tableStyle = e.target.value;
+          renderRoom();
+          saveData();
+          showToast(`Stile tavoli aggiornato a: ${e.target.value.toUpperCase()}`, 'info');
+        });
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('btn-toggle-design').addEventListener('click', () => {
+        toggleDesignMode(!isDesignMode);
+      });
+      const floorSvg = document.getElementById('floor-plan-svg');
+      floorSvg.addEventListener('mousemove', handleDragMove);
+      floorSvg.addEventListener('touchmove', handleTouchDragMove, { passive: false });
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchend', handleDragEnd);
+      floorSvg.addEventListener('mousedown', (e) => {
+        if (e.target === floorSvg) { deselectTable(); }
+      });
+    }
+
+    function toggleSidebar() {
+      isSidebarCollapsed = !isSidebarCollapsed;
+      const sidebar = document.getElementById('left-sidebar');
+      const icon = document.getElementById('main-sidebar-icon');
+      
+      sidebar.classList.toggle('collapsed', isSidebarCollapsed);
+      icon.className = `fa-solid ${isSidebarCollapsed ? 'fa-bars-staggered' : 'fa-utensils'} text-white transition-transform duration-300`;
+    }
+
+    function toggleDesignMode(active) {
+      isDesignMode = active;
+      const btn = document.getElementById('btn-toggle-design');
+      const banner = document.getElementById('design-banner');
+      const addSection = document.getElementById('add-table-section');
+      const fineControls = document.getElementById('fine-movement-controls');
+
+      if (isDesignMode) {
+        btn.classList.remove('bg-slate-800', 'text-slate-200');
+        btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
+        banner.classList.remove('hidden');
+        addSection.classList.remove('hidden');
+        if (selectedTableId) fineControls.classList.remove('hidden');
+      } else {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
+        btn.classList.add('bg-slate-800', 'text-slate-200');
+        banner.classList.add('hidden');
+        addSection.classList.add('hidden');
+        fineControls.classList.add('hidden');
+      }
+      renderRoom();
+    }
+
+    function renderRoom() {
+      const svg = document.getElementById('floor-plan-svg');
+      let group = document.getElementById('svg-tables-group');
+      if (!group) {
+        group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        group.setAttribute("id", "svg-tables-group");
+        svg.appendChild(group);
+      }
+      
+      group.innerHTML = '';
+      const activeTables = appData.tables.filter(t => t.roomId === appData.currentRoomId);
+      activeTables.forEach(table => {
+        const tableG = createTableSVGGroup(table);
+        group.appendChild(tableG);
+      });
+      renderTablesList();
+    }
+
+    function getChairPositions(shape, maxSeats, w = 90, h = 90) {
+      const positions = [];
+      const chairOffset = 18; 
+
+      if (shape === 'circle') {
+        const radius = w / 2;
+        const distFromCenter = radius + chairOffset;
+        for (let i = 0; i < maxSeats; i++) {
+          const angle = (i * 2 * Math.PI) / maxSeats - Math.PI / 2;
+          positions.push({ x: Math.cos(angle) * distFromCenter, y: Math.sin(angle) * distFromCenter, angle: angle * (180 / Math.PI) + 90 });
+        }
+      } else {
+        if (appData.globalSettings && appData.globalSettings.tableStyle === 'sagra') {
+          const topCount = Math.ceil(maxSeats / 2);
+          const bottomCount = Math.floor(maxSeats / 2);
+          for (let i = 0; i < topCount; i++) {
+            const pct = topCount > 1 ? i / (topCount - 1) : 0.5;
+            const x = (pct - 0.5) * (w - 28);
+            positions.push({ x, y: -h/2 - chairOffset, angle: 180 });
+          }
+          for (let i = 0; i < bottomCount; i++) {
+            const pct = bottomCount > 1 ? i / (bottomCount - 1) : 0.5;
+            const x = (pct - 0.5) * (w - 28);
+            positions.push({ x, y: h/2 + chairOffset, angle: 0 });
+          }
+        } else {
+          if (maxSeats === 1) {
+            positions.push({ x: 0, y: -h/2 - chairOffset, angle: 180 });
+          } else if (maxSeats === 2) {
+            positions.push({ x: 0, y: -h/2 - chairOffset, angle: 180 });
+            positions.push({ x: 0, y: h/2 + chairOffset, angle: 0 });
+          } else if (maxSeats === 3) {
+            positions.push({ x: -w/4, y: -h/2 - chairOffset, angle: 180 });
+            positions.push({ x: w/4, y: -h/2 - chairOffset, angle: 180 });
+            positions.push({ x: 0, y: h/2 + chairOffset, angle: 0 });
+          } else if (maxSeats === 4) {
+            positions.push({ x: -w/4, y: -h/2 - chairOffset, angle: 180 });
+            positions.push({ x: w/4, y: -h/2 - chairOffset, angle: 180 });
+            positions.push({ x: -w/4, y: h/2 + chairOffset, angle: 0 });
+            positions.push({ x: w/4, y: h/2 + chairOffset, angle: 0 });
+          } else {
+            let topCount = 0, bottomCount = 0, leftCount = 0, rightCount = 0;
+            for (let i = 0; i < maxSeats; i++) {
+              if (i % 4 === 0) topCount++;
+              else if (i % 4 === 1) bottomCount++;
+              else if (i % 4 === 2) leftCount++;
+              else rightCount++;
             }
-        }
-
-        async function salvaTavoli() {
-            try {
-                await setDoc(doc(db, "ristorante", "sala"), {
-                    tavoli: tavoli
-                });
-                console.log("Dati salvati");
-            } catch (error) {
-                console.error(error);
+            for (let i = 0; i < topCount; i++) {
+              const pct = topCount > 1 ? i / (topCount - 1) : 0.5;
+              const x = (pct - 0.5) * (w - 24);
+              positions.push({ x, y: -h/2 - chairOffset, angle: 180 });
             }
-        }
- 
-        async function caricaTavoli() {
-            try {
-                const docRef = doc(db, "ristorante", "sala");
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    tavoli = docSnap.data().tavoli;
-                }
-
-                renderizzaTavoli();
-            } catch (error) {
-                console.error(error);
+            for (let i = 0; i < bottomCount; i++) {
+              const pct = bottomCount > 1 ? i / (bottomCount - 1) : 0.5;
+              const x = (pct - 0.5) * (w - 24);
+              positions.push({ x, y: h/2 + chairOffset, angle: 0 });
             }
-        }
-
-        // Stato dei tavoli iniziale
-        let tavoli = [
-            { id: 1, nome: "Tavolo 1", persone: 0 },
-            { id: 2, nome: "Tavolo 2", persone: 0 },
-            { id: 3, nome: "Tavolo 3", persone: 0 },
-            { id: 4, nome: "Tavolo 4", persone: 0 },
-            { id: 5, nome: "Tavolo 5", persone: 0 },
-            { id: 6, nome: "Tavolo 6", persone: 0 }
-        ];
-
-        let modalitaModifica = false;
-        let tavoloDaEliminareId = null;
-        let dragStartIndex = null;
-
-        // Mappa dei colori basata sulla logica del tuo Python
-        function getStile(persone) {
-            if (persone === 0) return { bg: 'bg-white', border: 'border-gray-200', text: 'text-gray-400', icone: 'text-gray-300', btn: 'bg-gray-100 hover:bg-gray-200 text-gray-600', stato: 'Vuoto' };
-            if (persone >= 1 && persone <= 3) return { bg: 'bg-green-50', border: 'border-green-400', text: 'text-green-800', icone: 'text-green-500', btn: 'bg-green-200 hover:bg-green-300 text-green-800', stato: 'Tranquillo' };
-            if (persone >= 4 && persone <= 5) return { bg: 'bg-yellow-50', border: 'border-yellow-400', text: 'text-yellow-800', icone: 'text-yellow-500', btn: 'bg-yellow-200 hover:bg-yellow-300 text-yellow-800', stato: 'Medio' };
-            if (persone >= 6 && persone <= 7) return { bg: 'bg-orange-50', border: 'border-orange-400', text: 'text-orange-800', icone: 'text-orange-500', btn: 'bg-orange-200 hover:bg-orange-300 text-orange-800', stato: 'Pieno' };
-            if (persone >= 8) return { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-800', icone: 'text-red-500', btn: 'bg-red-200 hover:bg-red-300 text-red-800', stato: 'Al Completo' };
-            return { bg: 'bg-white', border: 'border-gray-200', text: 'text-gray-800', icone: 'text-gray-400', btn: 'bg-gray-200', stato: 'Errore' };
-        }
-
-        // Attiva/Disattiva la modalità modifica della sala
-        function toggleModalitaModifica() {
-            modalitaModifica = !modalitaModifica;
-
-            const btn = document.getElementById('btn-modifica');
-            const banner = document.getElementById('banner-modifica');
-            const legenda = document.getElementById('legenda-container');
-
-            if (modalitaModifica) {
-                btn.innerHTML = '<i class="fas fa-check"></i> <span>Salva Layout</span>';
-                btn.className = "bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-md flex items-center gap-2 text-sm";
-                banner.classList.remove('hidden');
-                legenda.classList.add('hidden');
-            } else {
-                salvaTavoli();
-                btn.innerHTML = '<i class="fas fa-sliders-h"></i> <span>Personalizza Sala</span>';
-                btn.className = "bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-md flex items-center gap-2 text-sm";
-                banner.classList.add('hidden');
-                legenda.classList.remove('hidden');
+            for (let i = 0; i < leftCount; i++) {
+              const pct = leftCount > 1 ? i / (leftCount - 1) : 0.5;
+              const y = (pct - 0.5) * (h - 24);
+              positions.push({ x: -w/2 - chairOffset, y, angle: 90 });
             }
-            renderizzaTavoli();
-        }
-
-        // Modifica numero persone
-        function aggiornaPosti(id, delta) {
-            const index = tavoli.findIndex(t => t.id === id);
-            if (index !== -1) {
-                const nuovePersone = tavoli[index].persone + delta;
-                if (nuovePersone >= 0 && nuovePersone <= 8) {
-                    tavoli[index].persone = nuovePersone;
-                    salvaTavoli();
-                    renderizzaTavoli();
-                    salvaTavoli();
-                }
+            for (let i = 0; i < rightCount; i++) {
+              const pct = rightCount > 1 ? i / (rightCount - 1) : 0.5;
+              const y = (pct - 0.5) * (h - 24);
+              positions.push({ x: w/2 + chairOffset, y, angle: 270 });
             }
-
+          }
         }
+      }
+      return positions;
+    }
 
-        // Aggiunge un nuovo tavolo in fondo alla lista
-        function aggiungiTavolo() {
-            // Trova l'ID o numero massimo attuale per proporre un nome logico
-            const maxId = tavoli.length > 0 ? Math.max(...tavoli.map(t => t.id)) : 0;
-            const nuovoId = maxId + 1;
+    function createTableSVGGroup(table) {
+      const isSelected = selectedTableId === table.id;
+      const occupiedCount = table.occupiedSeats.filter(s => s).length;
+      let tableStatusColor = 'emerald';
+      if (occupiedCount === table.maxSeats) tableStatusColor = 'rose';
+      else if (occupiedCount > 0) tableStatusColor = 'amber';
 
-            tavoli.push({
-                id: nuovoId,
-                nome: `Tavolo ${nuovoId}`,
-                persone: 0
-            });
-            salvaTavoli();
-            renderizzaTavoli();
+      let tableW = 80, tableH = 80;
+      if (table.shape === 'rect') {
+        if (appData.globalSettings && appData.globalSettings.tableStyle === 'sagra') {
+          const seatsPerSide = Math.ceil(table.maxSeats / 2);
+          tableW = Math.max(90, seatsPerSide * 26 + 16); 
+          tableH = 60; 
+        } else {
+          tableW = table.maxSeats <= 4 ? 90 : table.maxSeats <= 8 ? 120 : 150;
+          tableH = table.maxSeats <= 4 ? 65 : 75;
         }
+      } else {
+        tableW = table.maxSeats <= 4 ? 75 : table.maxSeats <= 8 ? 95 : 120;
+        tableH = tableW;
+      }
 
-        // Rinomina un tavolo mentre l'utente scrive nel campo di testo
-        function rinominaTavolo(id, nuovoNome) {
-            const index = tavoli.findIndex(t => t.id === id);
-            if (index !== -1) {
-                tavoli[index].nome = nuovoNome;
-                salvaTavoli();
-            }
+      const tableScale = table.scale || 1;
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("id", `table-group-${table.id}`);
+      g.setAttribute("transform", `translate(${table.x}, ${table.y}) scale(${tableScale})`);
+      g.setAttribute("class", `table-group ${isDesignMode ? 'cursor-grab' : ''}`);
 
+      const chairPositions = getChairPositions(table.shape, table.maxSeats, tableW, tableH);
+      let chairsHtml = '';
+      chairPositions.forEach((pos, idx) => {
+        const isOccupied = table.occupiedSeats[idx] || false;
+        const chairBg = isOccupied ? 'rgba(239, 68, 68, 0.95)' : 'rgba(16, 185, 129, 0.2)';
+        const chairStroke = isOccupied ? '#f43f5e' : '#10b981';
+        chairsHtml += `
+          <g class="chair-clickable cursor-pointer transition-all hover:opacity-80 duration-150" 
+             data-table-id="${table.id}" data-seat-idx="${idx}" transform="translate(${pos.x}, ${pos.y}) rotate(${pos.angle})">
+            <rect x="-11" y="-11" width="22" height="22" rx="6" fill="${chairBg}" stroke="${chairStroke}" stroke-width="2" />
+            <path d="M -8 2 Q 0 -4 8 2" fill="none" stroke="${chairStroke}" stroke-width="1.5" opacity="0.6"/>
+            <rect x="-8" y="-15" width="16" height="4" rx="1.5" fill="${isOccupied ? '#f43f5e' : '#334155'}" />
+          </g>
+        `;
+      });
+
+      const selectedBorder = isSelected ? 'stroke="#f59e0b" stroke-width="3" stroke-dasharray="4,4"' : `stroke="rgba(255,255,255,0.15)" stroke-width="2"`;
+      let tableGraphic = '';
+      if (table.shape === 'circle') {
+        tableGraphic = `
+          <circle cx="0" cy="0" r="${tableW/2}" fill="url(#tableWoodGradient)" ${selectedBorder} class="drop-shadow-lg" />
+          <circle cx="0" cy="0" r="${tableW/2 - 6}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1" />
+        `;
+      } else {
+        tableGraphic = `
+          <rect x="-${tableW/2}" y="-${tableH/2}" width="${tableW}" height="${tableH}" rx="12" fill="url(#tableWoodGradient)" ${selectedBorder} class="drop-shadow-lg" />
+          <rect x="-${tableW/2 - 6}" y="-${tableH/2 - 6}" width="${tableW - 12}" height="${tableH - 12}" rx="8" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1" />
+        `;
+      }
+
+      const centerLabel = `
+        <text x="0" y="2" font-family="sans-serif" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">${table.name}</text>
+        <text x="0" y="14" font-family="sans-serif" font-size="9" font-weight="600" fill="${tableStatusColor === 'rose' ? '#f43f5e' : tableStatusColor === 'amber' ? '#f59e0b' : '#10b981'}" text-anchor="middle">${occupiedCount}/${table.maxSeats}</text>
+      `;
+
+      g.innerHTML = `<g class="chairs-group">${chairsHtml}</g><g class="table-body cursor-pointer" data-table-id="${table.id}">${tableGraphic}${centerLabel}</g>`;
+
+      g.querySelector('.table-body').addEventListener('click', (e) => { e.stopPropagation(); selectTable(table.id); });
+      g.querySelectorAll('.chair-clickable').forEach(chair => {
+        chair.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (isDesignMode) { showToast("Non puoi cambiare i posti in modalità progettazione.", "info"); return; }
+          const seatIdx = parseInt(chair.getAttribute('data-seat-idx'));
+          toggleSeat(table.id, seatIdx);
+        });
+      });
+
+      if (isDesignMode) {
+        g.querySelector('.table-body').addEventListener('mousedown', (e) => { startDrag(e, table.id); });
+        g.querySelector('.table-body').addEventListener('touchstart', (e) => { startTouchDrag(e, table.id); }, { passive: true });
+      }
+
+      return g;
+    }
+
+    function getSVGCoords(e) {
+      const svg = document.getElementById('floor-plan-svg');
+      const rect = svg.getBoundingClientRect();
+      let clientX, clientY;
+      if (e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } 
+      else { clientX = e.clientX; clientY = e.clientY; }
+      const x = ((clientX - rect.left) / rect.width) * 1000;
+      const y = ((clientY - rect.top) / rect.height) * 650;
+      return { x, y };
+    }
+
+    function toggleSeat(tableId, seatIdx) {
+      const table = appData.tables.find(t => t.id === tableId);
+      if (!table) return;
+      table.occupiedSeats[seatIdx] = !table.occupiedSeats[seatIdx];
+      
+      if (selectedTableId === tableId) {
+        document.getElementById('occupied-val-label').textContent = table.occupiedSeats.filter(s => s).length;
+      }
+      
+      renderRoom(); updateGlobalStats(); saveData();
+    }
+
+    function selectTable(tableId) {
+      selectedTableId = tableId;
+      const table = appData.tables.find(t => t.id === tableId);
+      if (!table) return;
+      document.getElementById('edit-table-section').classList.remove('hidden');
+      document.getElementById('edit-table-name').value = table.name;
+      document.getElementById('edit-table-shape').value = table.shape;
+      document.getElementById('edit-table-seats').value = table.maxSeats;
+      document.getElementById('occupied-val-label').textContent = table.occupiedSeats.filter(s => s).length;
+      
+      const currentScale = table.scale || 1;
+      document.getElementById('edit-table-scale').value = currentScale * 100;
+      document.getElementById('scale-val-label').textContent = Math.round(currentScale * 100) + '%';
+      document.getElementById('scale-val-label').classList.remove('hidden');
+      document.getElementById('scale-val-input').classList.add('hidden');
+
+      if (isDesignMode) document.getElementById('fine-movement-controls').classList.remove('hidden');
+      else document.getElementById('fine-movement-controls').classList.add('hidden');
+      renderRoom();
+    }
+
+    function deselectTable() {
+      selectedTableId = null;
+      document.getElementById('edit-table-section').classList.add('hidden');
+      renderRoom();
+    }
+
+    function moveSelectedTable(direction) {
+      if (!selectedTableId) return;
+      const table = appData.tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+      const step = 5;
+      if (direction === 'up') table.y = Math.max(40, table.y - step);
+      if (direction === 'down') table.y = Math.min(610, table.y + step);
+      if (direction === 'left') table.x = Math.max(40, table.x - step);
+      if (direction === 'right') table.x = Math.min(960, table.x + step);
+      renderRoom(); saveData();
+    }
+
+    function updateSelectedTableFromForm() {
+      if (!selectedTableId) return;
+      const table = appData.tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+      const newName = document.getElementById('edit-table-name').value.trim();
+      const newShape = document.getElementById('edit-table-shape').value;
+      const newScale = parseInt(document.getElementById('edit-table-scale').value) / 100;
+      
+      if (newName) table.name = newName;
+      table.shape = newShape;
+      table.scale = newScale;
+      document.getElementById('scale-val-label').textContent = Math.round(newScale * 100) + '%';
+      
+      renderRoom(); saveData();
+    }
+
+    function enableScaleEdit() {
+      const spanEl = document.getElementById('scale-val-label');
+      const inputEl = document.getElementById('scale-val-input');
+      const currentVal = parseInt(spanEl.textContent);
+      
+      spanEl.classList.add('hidden');
+      inputEl.value = currentVal;
+      inputEl.classList.remove('hidden');
+      inputEl.focus();
+      inputEl.select();
+    }
+
+    function saveScaleEdit() {
+      const spanEl = document.getElementById('scale-val-label');
+      const inputEl = document.getElementById('scale-val-input');
+      
+      if (inputEl.classList.contains('hidden')) return;
+
+      let newScale = parseInt(inputEl.value);
+      if (isNaN(newScale)) newScale = parseInt(spanEl.textContent);
+      if (newScale < 10) newScale = 10;
+      if (newScale > 300) newScale = 300;
+
+      inputEl.classList.add('hidden');
+      spanEl.textContent = newScale + '%';
+      spanEl.classList.remove('hidden');
+      
+      document.getElementById('edit-table-scale').value = newScale;
+      updateSelectedTableFromForm();
+    }
+
+    function adjustOccupiedSeats(change) {
+      if (!selectedTableId) return;
+      const table = appData.tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+
+      if (change === 1) {
+        const idx = table.occupiedSeats.findIndex(s => !s);
+        if (idx !== -1) table.occupiedSeats[idx] = true;
+      } else if (change === -1) {
+        let idx = -1;
+        for (let i = table.occupiedSeats.length - 1; i >= 0; i--) {
+          if (table.occupiedSeats[i]) { idx = i; break; }
         }
+        if (idx !== -1) table.occupiedSeats[idx] = false;
+      }
+      
+      document.getElementById('occupied-val-label').textContent = table.occupiedSeats.filter(s => s).length;
+      renderRoom(); updateGlobalStats(); saveData();
+    }
 
-        // --- DRAG & DROP per spostare i tavoli con il mouse ---
-        function handleDragStart(e, index) {
-            dragStartIndex = index;
-            e.dataTransfer.effectAllowed = 'move';
-            // Ritarda l'opacità per far sì che l'anteprima trascinata (ghost) resti visibile
-            setTimeout(() => {
-                e.target.classList.add('opacity-40', 'border-indigo-500', 'bg-indigo-100');
-            }, 0);
-        }
+    function emptySelectedTable() {
+      const table = appData.tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+      table.occupiedSeats = Array(table.maxSeats).fill(false);
+      document.getElementById('occupied-val-label').textContent = 0;
+      renderRoom(); updateGlobalStats(); saveData();
+      showToast(`Tavolo "${table.name}" svuotato.`, "success");
+    }
 
-        function handleDragOver(e) {
-            e.preventDefault(); // Fondamentale per consentire il drop
-            e.dataTransfer.dropEffect = 'move';
-            return false;
-        }
+    function adjustSelectedSeats(change) {
+      if (!selectedTableId) return;
+      const table = appData.tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+      let seats = parseInt(table.maxSeats) + change;
+      if (seats < 1) seats = 1; if (seats > 16) seats = 16;
+      table.maxSeats = seats;
+      document.getElementById('edit-table-seats').value = seats;
+      const oldOccupied = [...table.occupiedSeats];
+      table.occupiedSeats = Array(seats).fill(false);
+      for (let i = 0; i < Math.min(seats, oldOccupied.length); i++) { table.occupiedSeats[i] = oldOccupied[i]; }
+      
+      document.getElementById('occupied-val-label').textContent = table.occupiedSeats.filter(s => s).length;
+      
+      renderRoom(); updateGlobalStats(); saveData();
+    }
 
-        function handleDragEnter(e, currentIndex) {
-            e.preventDefault();
-            if (currentIndex !== dragStartIndex) {
-                e.currentTarget.classList.add('border-indigo-600', 'scale-105', 'bg-indigo-100/60');
-            }
-        }
+    function adjustNewSeats(change) {
+      const el = document.getElementById('new-table-seats');
+      let val = parseInt(el.value) + change;
+      if (val < 1) val = 1; if (val > 16) val = 16;
+      el.value = val;
+    }
 
-        function handleDragLeave(e) {
-            e.currentTarget.classList.remove('border-indigo-600', 'scale-105', 'bg-indigo-100/60');
-        }
+    function createNewTable() {
+      const name = document.getElementById('new-table-name').value.trim() || `Tavolo ${appData.tables.length + 1}`;
+      const shape = document.getElementById('new-table-shape').value;
+      const maxSeats = parseInt(document.getElementById('new-table-seats').value) || 4;
+      const newTable = {
+        id: 'table_' + Date.now(), roomId: appData.currentRoomId, name: name, x: 500, y: 325, maxSeats: maxSeats, occupiedSeats: Array(maxSeats).fill(false), shape: shape, scale: 1
+      };
+      appData.tables.push(newTable);
+      document.getElementById('new-table-name').value = ''; 
+      renderRoom(); updateGlobalStats(); saveData();
+      selectTable(newTable.id);
+      showToast(`Tavolo "${name}" creato con successo!`, "success");
+    }
 
-        function handleDrop(e, dropIndex) {
-            e.stopPropagation();
-            e.currentTarget.classList.remove('border-indigo-600', 'scale-105', 'bg-indigo-100/60');
+    function startDrag(e, tableId) {
+      if (!isDesignMode) return;
+      e.preventDefault();
+      draggingTableId = tableId;
+      selectTable(tableId);
+      const coords = getSVGCoords(e);
+      const table = appData.tables.find(t => t.id === tableId);
+      if (table) { dragOffset.x = coords.x - table.x; dragOffset.y = coords.y - table.y; }
+    }
 
-            if (dragStartIndex !== null && dragStartIndex !== dropIndex) {
-                // Rimuove l'elemento dalla vecchia posizione e lo inserisce nella nuova
-                const draggedItem = tavoli.splice(dragStartIndex, 1)[0];
-                tavoli.splice(dropIndex, 0, draggedItem);
-                salvaTavoli();
-                renderizzaTavoli();
-            }
-            return false;
+    function handleDragMove(e) {
+      if (!draggingTableId || !isDesignMode) return;
+      const table = appData.tables.find(t => t.id === draggingTableId);
+      if (!table) return;
+      const coords = getSVGCoords(e);
+      let newX = coords.x - dragOffset.x;
+      let newY = coords.y - dragOffset.y;
+      table.x = Math.max(40, Math.min(960, newX));
+      table.y = Math.max(40, Math.min(610, newY));
+      const g = document.getElementById(`table-group-${table.id}`);
+      if (g) { g.setAttribute("transform", `translate(${table.x}, ${table.y}) scale(${table.scale || 1})`); }
+    }
 
-        }
+    function startTouchDrag(e, tableId) {
+      if (!isDesignMode) return;
+      draggingTableId = tableId;
+      selectTable(tableId);
+      const coords = getSVGCoords(e);
+      const table = appData.tables.find(t => t.id === tableId);
+      if (table) { dragOffset.x = coords.x - table.x; dragOffset.y = coords.y - table.y; }
+    }
 
-        function handleDragEnd(e) {
-            e.target.classList.remove('opacity-40', 'border-indigo-500', 'bg-indigo-100');
-            dragStartIndex = null;
-            renderizzaTavoli();
-        }
+    function handleTouchDragMove(e) { if (!draggingTableId || !isDesignMode) return; e.preventDefault(); handleDragMove(e); }
+    function handleDragEnd() { if (draggingTableId) { draggingTableId = null; saveData(); } }
 
-        // Apre il modal di conferma eliminazione
-        function chiediEliminaTavolo(id) {
-            tavoloDaEliminareId = id;
-            document.getElementById('modal-conferma').classList.remove('hidden');
-            document.getElementById('btn-conferma-elimina').onclick = confermaEliminaTavolo;
-        }
+    function triggerDeleteConfirmation() {
+      if (!selectedTableId) return;
+      const table = appData.tables.find(t => t.id === selectedTableId);
+      if (!table) return;
+      tableToDeleteId = selectedTableId;
+      document.getElementById('delete-table-name-span').textContent = table.name;
+      const modal = document.getElementById('delete-modal');
+      modal.classList.remove('hidden');
+      setTimeout(() => { modal.classList.remove('opacity-0'); modal.querySelector('.transform').classList.remove('scale-95'); }, 50);
+    }
 
-        function chiudiModalElimina() {
-            document.getElementById('modal-conferma').classList.add('hidden');
-            tavoloDaEliminareId = null;
-        }
+    function closeDeleteModal() {
+      const modal = document.getElementById('delete-modal');
+      modal.classList.add('opacity-0');
+      modal.querySelector('.transform').classList.add('scale-95');
+      setTimeout(() => { modal.classList.add('hidden'); tableToDeleteId = null; }, 300);
+    }
 
-        function confermaEliminaTavolo() {
-            if (tavoloDaEliminareId !== null) {
-                tavoli = tavoli.filter(t => t.id !== tavoloDaEliminareId);
-                chiudiModalElimina();
-                salvaTavoli();
-                renderizzaTavoli();
-            }
+    function confirmDeleteTable() {
+      if (!tableToDeleteId) return;
+      const tableIndex = appData.tables.findIndex(t => t.id === tableToDeleteId);
+      if (tableIndex !== -1) {
+        const tableName = appData.tables[tableIndex].name;
+        appData.tables.splice(tableIndex, 1);
+        deselectTable(); closeDeleteModal(); renderRoom(); updateGlobalStats(); saveData();
+        showToast(`Tavolo "${tableName}" rimosso.`, "rose");
+      }
+    }
 
-        }
+    function triggerResetConfirmation() {
+      const modal = document.getElementById('reset-modal');
+      modal.classList.remove('hidden');
+      setTimeout(() => { modal.classList.remove('opacity-0'); modal.querySelector('.transform').classList.remove('scale-95'); }, 50);
+    }
 
-        // Rendering principale dell'applicazione
-        function renderizzaTavoli() {
-            const container = document.getElementById('tavoli-container');
-            container.innerHTML = '';
+    function closeResetModal() {
+      const modal = document.getElementById('reset-modal');
+      modal.classList.add('opacity-0');
+      modal.querySelector('.transform').classList.add('scale-95');
+      setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    }
 
-            let totalePersone = 0;
-            let tavoliLiberi = 0;
+    function confirmResetToDemo() {
+      appData = { ...DEMO_DATA }; saveData(); deselectTable(); initializeRoomSelector(); initializeStyleSelector(); renderRoom(); updateGlobalStats(); closeResetModal();
+      showToast("Configurazione iniziale caricata.", "success");
+    }
 
-            tavoli.forEach((tavolo, index) => {
-                totalePersone += tavolo.persone;
-                if (tavolo.persone < 8) tavoliLiberi++;
+    function renderTablesList() {
+      const container = document.getElementById('tables-list-container');
+      const searchQuery = document.getElementById('search-tables').value.toLowerCase();
+      const filteredTables = appData.tables.filter(t => t.roomId === appData.currentRoomId && t.name.toLowerCase().includes(searchQuery));
+      document.getElementById('tables-count').textContent = `${filteredTables.length} Tavoli`;
+      if (filteredTables.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">Nessun tavolo trovato</div>`;
+        return;
+      }
+      container.innerHTML = '';
+      filteredTables.forEach(table => {
+        const occupiedCount = table.occupiedSeats.filter(s => s).length;
+        const isSelected = selectedTableId === table.id;
+        let badgeColor = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        if (occupiedCount === table.maxSeats) badgeColor = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        else if (occupiedCount > 0) badgeColor = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+        const div = document.createElement('div');
+        div.className = `p-3.5 cursor-pointer transition-colors flex items-center justify-between border-l-2 ${isSelected ? 'bg-slate-800/80 border-amber-500' : 'hover:bg-slate-800/40 border-transparent'}`;
+        div.onclick = () => { selectTable(table.id); };
+        div.innerHTML = `
+          <div class="min-w-0 flex-1 pr-2">
+            <div class="flex items-center gap-1.5 mb-1"><span class="text-xs font-bold text-slate-200 truncate">${table.name}</span></div>
+            <div class="text-[10px] text-slate-400 flex items-center gap-1"><i class="fa-solid ${table.shape === 'circle' ? 'fa-circle' : 'fa-square'} text-[8px] text-slate-500"></i><span>Capienza max: ${table.maxSeats}</span></div>
+          </div>
+          <div class="shrink-0"><span class="text-[10px] px-2 py-1 rounded-lg font-bold ${badgeColor}">${occupiedCount} / ${table.maxSeats} Posti</span></div>
+        `;
+        container.appendChild(div);
+      });
+    }
 
-                const stile = getStile(tavolo.persone);
-                const isVuoto = tavolo.persone === 0;
-                const isPieno = tavolo.persone >= 8;
+    function updateGlobalStats() {
+      const roomTables = appData.tables.filter(t => t.roomId === appData.currentRoomId);
+      let totalCapacity = 0, occupiedSeats = 0, freeTablesCount = 0;
+      roomTables.forEach(t => {
+        totalCapacity += t.maxSeats;
+        const occupied = t.occupiedSeats.filter(s => s).length;
+        occupiedSeats += occupied;
+        if (occupied === 0) freeTablesCount++;
+      });
+      const occupancyRate = totalCapacity > 0 ? Math.round((occupiedSeats / totalCapacity) * 100) : 0;
+      document.getElementById('stat-total-clients').textContent = occupiedSeats;
+      document.getElementById('stat-occupancy-rate').textContent = `${occupancyRate}%`;
+      document.getElementById('stat-free-tables').textContent = `${freeTablesCount} / ${roomTables.length}`;
+    }
 
-                const card = document.createElement('div');
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      let bg = 'bg-slate-900 border-slate-800 text-slate-200', icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+      if (type === 'success') { bg = 'bg-slate-900 border-emerald-500/20 text-slate-200'; icon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>'; } 
+      else if (type === 'warning') { bg = 'bg-slate-900 border-amber-500/20 text-slate-200'; icon = '<i class="fa-solid fa-triangle-exclamation text-amber-400"></i>'; } 
+      else if (type === 'rose') { bg = 'bg-slate-900 border-rose-500/20 text-slate-200'; icon = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>'; }
+      toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl transition-all duration-300 transform translate-y-2 opacity-0 text-xs font-semibold ${bg}`;
+      toast.innerHTML = `${icon} <span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 50);
+      setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-1'); setTimeout(() => toast.remove(), 300); }, 3500);
+    }
 
-                if (modalitaModifica) {
-                    // --- GRAPHICS: MODALITÀ PERSONALIZZAZIONE CON DRAG & DROP ---
-                    card.className = "pop-in flex flex-col justify-between p-5 rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/40 shadow-sm transition-all duration-300 cursor-move";
-                    card.setAttribute('draggable', 'true');
+    function exportLayout() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+      const downloadAnchor = document.createElement('a'); downloadAnchor.setAttribute("href", dataStr); downloadAnchor.setAttribute("download", `RistoMap_Layout_${appData.currentRoomId}_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor); downloadAnchor.click(); downloadAnchor.remove(); showToast("Layout scaricato con successo!", "success");
+    }
 
-                    // Eventi per il Drag and Drop
-                    card.ondragstart = (e) => handleDragStart(e, index);
-                    card.ondragover = handleDragOver;
-                    card.ondragenter = (e) => handleDragEnter(e, index);
-                    card.ondragleave = handleDragLeave;
-                    card.ondrop = (e) => handleDrop(e, index);
-                    card.ondragend = handleDragEnd;
-
-                    card.innerHTML = `
-                        <!-- Intestazione modifica con Drag Indicator -->
-                        <div class="flex justify-between items-center mb-4 pointer-events-none">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-grip-vertical text-indigo-400"></i>
-                                <span class="text-xs font-bold text-indigo-500 bg-indigo-100 px-2 py-1 rounded-md">TRASCINA</span>
-                            </div>
-                            <button onclick="chiediEliminaTavolo(${tavolo.id})" class="text-red-500 hover:text-red-700 w-8 h-8 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors relative z-10 pointer-events-auto" title="Elimina Tavolo">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </div>
-                        
-                        <!-- Input per rinominare direttamente -->
-                        <div class="mb-5 relative z-10">
-                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nome/Numero Tavolo</label>
-                            <input type="text" value="${tavolo.nome}" 
-                                onchange="rinominaTavolo(${tavolo.id}, this.value)"
-                                onmousedown="event.stopPropagation();" 
-                                draggable="false"
-                                class="w-full bg-white border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none rounded-xl px-3 py-2 text-gray-800 font-bold transition-all shadow-sm cursor-text"
-                                placeholder="Esempio: Tavolo 27"
-                            />
-                        </div>
-
-                        <!-- Istruzione visiva -->
-                        <div class="mt-auto text-center pointer-events-none">
-                            <span class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest bg-white/50 px-3 py-1.5 rounded-full"><i class="fas fa-arrows-alt mr-1"></i> Tieni premuto per spostare</span>
-                        </div>
-                    `;
-                } else {
-                    // --- GRAPHICS: MODALITÀ UTILIZZO NORMALE ---
-                    card.className = "pop-in flex flex-col justify-between p-6 rounded-2xl border-2 ${stile.bg} ${stile.border} shadow-sm transition-all duration-300 hover:shadow-md";
-                    card.className = `pop-in flex flex-col justify-between p-6 rounded-2xl border-2 ${stile.bg} ${stile.border} shadow-sm transition-all duration-300`;
-
-                    card.innerHTML = `
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-xl font-bold ${stile.text}">${tavolo.nome}</h2>
-                            <span class="text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider bg-white/60 ${stile.text}">
-                                ${stile.stato}
-                            </span>
-                        </div>
-                        
-                        <div class="flex items-center justify-center space-x-6 bg-white/60 p-4 rounded-xl shadow-inner">
-                            <button onclick="aggiornaPosti(${tavolo.id}, -1)" 
-                                ${isVuoto ? 'disabled' : ''} 
-                                class="w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all shadow-sm
-                                ${isVuoto ? 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none' : stile.btn + ' hover:scale-105 active:scale-95'}">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            
-                            <div class="flex flex-col items-center justify-center w-16">
-                                <i class="fas fa-user ${stile.icone} text-lg mb-1"></i>
-                                <span class="text-4xl font-black ${stile.text}">${tavolo.persone}</span>
-                            </div>
-
-                            <button onclick="aggiornaPosti(${tavolo.id}, 1)" 
-                                ${isPieno ? 'disabled' : ''} 
-                                class="w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all shadow-sm
-                                ${isPieno ? 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none' : stile.btn + ' hover:scale-105 active:scale-95'}">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                        </div>
-                    `;
-                }
-                container.appendChild(card);
-            });
-
-            // Se siamo in modalità modifica, aggiungi il pulsante speciale per "Aggiungere Tavoli" alla fine della griglia
-            if (modalitaModifica) {
-                const cardAggiungi = document.createElement('button');
-                cardAggiungi.onclick = aggiungiTavolo;
-                cardAggiungi.className = "pop-in flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/20 text-indigo-500 hover:text-indigo-700 transition-all duration-300 min-h-[200px] gap-3 group";
-                cardAggiungi.innerHTML = `
-                    <div class="w-14 h-14 rounded-full bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center text-2xl transition-all">
-                        <i class="fas fa-plus"></i>
-                    </div>
-                    <span class="font-bold text-sm tracking-wide">Aggiungi Nuovo Tavolo</span>
-                `;
-                container.appendChild(cardAggiungi);
-            }
-
-            // Aggiorna statistiche
-            document.getElementById('totale-persone').innerText = totalePersone;
-            document.getElementById('tavoli-liberi').innerText = `${tavoliLiberi}/${tavoli.length}`;
-        }
-
-        window.aggiornaPosti = aggiornaPosti;
-        window.toggleModalitaModifica = toggleModalitaModifica;
-        window.aggiungiTavolo = aggiungiTavolo;
-        window.rinominaTavolo = rinominaTavolo;
-        window.chiediEliminaTavolo = chiediEliminaTavolo;
-        window.chiudiModalElimina = chiudiModalElimina;
-        window.confermaEliminaTavolo = confermaEliminaTavolo;
-        // Inizializza l'applicazione al caricamento della pagina
-        //window.onload = caricaTavoli;
-    </script>
+    function importLayout(event) {
+      const file = event.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.tables && Array.isArray(parsed.tables)) {
+            appData = parsed; saveData(); initializeRoomSelector(); initializeStyleSelector(); renderRoom(); updateGlobalStats(); showToast("Nuovo layout caricato correttamente!", "success");
+          } else { showToast("File JSON non valido: struttura mancante.", "warning"); }
+        } catch (err) { showToast("Errore di lettura del file JSON.", "rose"); }
+      };
+      reader.readAsText(file);
+    }
+  </script>
 </body>
-
 </html>
