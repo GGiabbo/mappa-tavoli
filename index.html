@@ -36,6 +36,24 @@
     #left-sidebar.collapsed { width: 0px !important; border-right-width: 0px !important; overflow: hidden; }
     /* Previene lo schiacciamento del contenuto interno durante la chiusura */
     .sidebar-inner { width: 320px; }
+    
+    /* Stili per la mappa dinamica e panning */
+    #floor-plan-map {
+      transition: width 0.3s ease;
+      cursor: grab;
+    }
+    #floor-plan-map:active {
+      cursor: grabbing;
+    }
+    
+    /* Container per lo scroll e il panning */
+    .map-viewport {
+      overflow: auto; /* Permette lo scroll nativo se necessario */
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
   </style>
 </head>
 <body class="h-full flex flex-col overflow-hidden">
@@ -74,6 +92,14 @@
 
     <!-- AZIONI GENERALI -->
     <div class="flex items-center gap-3">
+      <!-- Controlli Dimensione Sala -->
+      <div class="hidden md:flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-xl px-2 py-1.5 h-[38px]">
+        <span class="text-[10px] text-slate-400 font-semibold uppercase px-1 hidden lg:block">Spazio Mappa:</span>
+        <button onclick="adjustRoomWidth(-500)" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors" title="Riduci larghezza banco di lavoro"><i class="fa-solid fa-compress"></i></button>
+        <span id="room-width-display" class="text-xs text-white font-medium w-14 text-center select-none">1000px</span>
+        <button onclick="adjustRoomWidth(500)" class="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors" title="Aumenta larghezza banco di lavoro"><i class="fa-solid fa-expand"></i></button>
+      </div>
+
       <!-- Selettore Sala -->
       <select id="room-selector" class="bg-slate-950 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-500 transition-colors font-medium"></select>
 
@@ -198,8 +224,8 @@
 
     <!-- AREA CENTRALE: Mappa Sala Interattiva -->
     <section class="flex-1 bg-slate-950 flex flex-col overflow-hidden relative">
-      <div class="flex-1 overflow-auto p-4 flex items-center justify-center relative">
-        <div id="floor-plan-map" class="w-[1000px] h-[650px] bg-[#121824] rounded-3xl border border-slate-800 relative floor-grid shadow-inner transition-colors overflow-hidden no-select">
+      <div id="map-viewport" class="map-viewport p-4">
+        <div id="floor-plan-map" class="h-[650px] bg-[#121824] rounded-3xl border border-slate-800 relative floor-grid shadow-inner transition-colors overflow-hidden no-select mx-auto" style="width: 1000px; min-width: 1000px;">
           <!-- SPAZIO DI LAVORO SVG UNIFICATO -->
           <svg id="floor-plan-svg" viewBox="0 0 1000 650" class="w-full h-full overflow-visible">
             <defs>
@@ -246,15 +272,15 @@
 
   <!-- JS LOGIC -->
   <script>
-    const APP_STORAGE_KEY = 'RISTOMAP_PRO_DATA_V5';
+    const APP_STORAGE_KEY = 'RISTOMAP_PRO_DATA_V6';
     
     // Dati iniziali di esempio
     const DEMO_DATA = {
       globalSettings: { tableStyle: 'standard' },
       rooms: [
-        { id: 'sala-interna', name: 'Sala Principale' },
-        { id: 'terrazza', name: 'Terrazzo Panoramico' },
-        { id: 'giardino', name: 'Giardino Estivo' }
+        { id: 'sala-interna', name: 'Sala Principale', width: 1000 },
+        { id: 'terrazza', name: 'Terrazzo Panoramico', width: 1200 },
+        { id: 'giardino', name: 'Giardino Estivo', width: 1500 }
       ],
       currentRoomId: 'sala-interna',
       tables: [
@@ -274,28 +300,83 @@
     let dragOffset = { x: 0, y: 0 };
     let tableToDeleteId = null;
     let isSidebarCollapsed = false;
+    
+    // Variabili per il Panning (spostamento visuale)
+    let isPanning = false;
+    let startPanX = 0;
+    let startPanY = 0;
+    let scrollLeftStart = 0;
+    let scrollTopStart = 0;
 
     window.addEventListener('load', () => {
       loadData();
       initializeRoomSelector();
       initializeStyleSelector();
       setupEventListeners();
+      updateRoomWidthDisplay();
       renderRoom();
       updateGlobalStats();
     });
+
+    function adjustRoomWidth(change) {
+      const room = appData.rooms.find(r => r.id === appData.currentRoomId);
+      if (!room) return;
+      
+      let newWidth = (room.width || 1000) + change;
+      if (newWidth < 1000) newWidth = 1000; // Limite minimo
+      if (newWidth > 10000) newWidth = 10000; // Limite massimo molto largo
+      
+      room.width = newWidth;
+      updateRoomWidthDisplay();
+      
+      let tablesAdjusted = false;
+      const activeTables = appData.tables.filter(t => t.roomId === appData.currentRoomId);
+      activeTables.forEach(table => {
+         if (table.x > newWidth - 40) {
+            table.x = newWidth - 40;
+            tablesAdjusted = true;
+         }
+      });
+      if (tablesAdjusted) {
+          renderRoom();
+          showToast("Alcuni tavoli sono stati riposizionati nei bordi.", "warning");
+      }
+      saveData();
+    }
+
+    function updateRoomWidthDisplay() {
+      const room = appData.rooms.find(r => r.id === appData.currentRoomId);
+      const width = room ? (room.width || 1000) : 1000;
+      
+      const displayEl = document.getElementById('room-width-display');
+      if (displayEl) displayEl.textContent = `${width}px`;
+      
+      const mapEl = document.getElementById('floor-plan-map');
+      if (mapEl) {
+        mapEl.style.width = `${width}px`;
+        mapEl.style.minWidth = `${width}px`;
+      }
+      
+      const svgEl = document.getElementById('floor-plan-svg');
+      if (svgEl) {
+        svgEl.setAttribute('viewBox', `0 0 ${width} 650`);
+      }
+    }
 
     function loadData() {
       const stored = localStorage.getItem(APP_STORAGE_KEY);
       if (stored) {
         try {
           appData = JSON.parse(stored);
-          if (!appData.rooms) appData.rooms = [...DEMO_DATA.rooms];
+          if (!appData.rooms) appData.rooms = JSON.parse(JSON.stringify(DEMO_DATA.rooms));
+          // Backward compatibility per le larghezze
+          appData.rooms.forEach(r => { if(!r.width) r.width = 1000; });
           if (!appData.globalSettings) appData.globalSettings = { tableStyle: 'standard' };
         } catch (e) {
-          appData = { ...DEMO_DATA };
+          appData = JSON.parse(JSON.stringify(DEMO_DATA));
         }
       } else {
-        appData = { ...DEMO_DATA };
+        appData = JSON.parse(JSON.stringify(DEMO_DATA));
       }
     }
 
@@ -316,6 +397,7 @@
       selector.addEventListener('change', (e) => {
         appData.currentRoomId = e.target.value;
         deselectTable();
+        updateRoomWidthDisplay();
         renderRoom();
         updateGlobalStats();
         saveData();
@@ -343,12 +425,62 @@
       const floorSvg = document.getElementById('floor-plan-svg');
       floorSvg.addEventListener('mousemove', handleDragMove);
       floorSvg.addEventListener('touchmove', handleTouchDragMove, { passive: false });
-      window.addEventListener('mouseup', handleDragEnd);
-      window.addEventListener('touchend', handleDragEnd);
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+      window.addEventListener('touchend', handleGlobalMouseUp);
+      
+      // Eventi per il Panning sul viewport
+      const viewport = document.getElementById('map-viewport');
+      viewport.addEventListener('mousedown', startPan);
+      window.addEventListener('mousemove', handlePanMove);
+      
       floorSvg.addEventListener('mousedown', (e) => {
-        if (e.target === floorSvg) { deselectTable(); }
+        // Se si clicca sullo sfondo dell'SVG (non su un tavolo)
+        if (e.target === floorSvg) { 
+           deselectTable(); 
+           // Inizia il panning anche cliccando sull'svg vuoto
+           startPan(e);
+        }
       });
     }
+
+    // --- LOGICA PANNING ---
+    function startPan(e) {
+       // Non fare pan se stiamo trascinando un tavolo o se stiamo cliccando pulsanti
+       if (draggingTableId || e.target.closest('button') || e.target.closest('input')) return;
+       
+       isPanning = true;
+       const viewport = document.getElementById('map-viewport');
+       startPanX = e.clientX || e.touches?.[0].clientX;
+       startPanY = e.clientY || e.touches?.[0].clientY;
+       scrollLeftStart = viewport.scrollLeft;
+       scrollTopStart = viewport.scrollTop;
+       
+       document.getElementById('floor-plan-map').style.cursor = 'grabbing';
+    }
+
+    function handlePanMove(e) {
+       if (!isPanning) return;
+       e.preventDefault(); // Previene selezioni di testo durante il pan
+       
+       const viewport = document.getElementById('map-viewport');
+       const clientX = e.clientX || e.touches?.[0].clientX;
+       const clientY = e.clientY || e.touches?.[0].clientY;
+       
+       const dx = clientX - startPanX;
+       const dy = clientY - startPanY;
+       
+       viewport.scrollLeft = scrollLeftStart - dx;
+       viewport.scrollTop = scrollTopStart - dy;
+    }
+
+    function handleGlobalMouseUp(e) {
+       handleDragEnd(e);
+       if (isPanning) {
+           isPanning = false;
+           document.getElementById('floor-plan-map').style.cursor = 'grab';
+       }
+    }
+    // --- FINE LOGICA PANNING ---
 
     function toggleSidebar() {
       isSidebarCollapsed = !isSidebarCollapsed;
@@ -539,7 +671,11 @@
 
       g.innerHTML = `<g class="chairs-group">${chairsHtml}</g><g class="table-body cursor-pointer" data-table-id="${table.id}">${tableGraphic}${centerLabel}</g>`;
 
-      g.querySelector('.table-body').addEventListener('click', (e) => { e.stopPropagation(); selectTable(table.id); });
+      g.querySelector('.table-body').addEventListener('click', (e) => { 
+        if(isPanning) return; // Evita selezione se si sta trascinando la mappa
+        e.stopPropagation(); 
+        selectTable(table.id); 
+      });
       g.querySelectorAll('.chair-clickable').forEach(chair => {
         chair.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -550,8 +686,14 @@
       });
 
       if (isDesignMode) {
-        g.querySelector('.table-body').addEventListener('mousedown', (e) => { startDrag(e, table.id); });
-        g.querySelector('.table-body').addEventListener('touchstart', (e) => { startTouchDrag(e, table.id); }, { passive: true });
+        g.querySelector('.table-body').addEventListener('mousedown', (e) => { 
+            e.stopPropagation(); // Ferma la propagazione per non far partire il panning
+            startDrag(e, table.id); 
+        });
+        g.querySelector('.table-body').addEventListener('touchstart', (e) => { 
+            e.stopPropagation();
+            startTouchDrag(e, table.id); 
+        }, { passive: true });
       }
 
       return g;
@@ -560,10 +702,13 @@
     function getSVGCoords(e) {
       const svg = document.getElementById('floor-plan-svg');
       const rect = svg.getBoundingClientRect();
+      const currentRoom = appData.rooms.find(r => r.id === appData.currentRoomId);
+      const roomWidth = currentRoom ? (currentRoom.width || 1000) : 1000;
+
       let clientX, clientY;
       if (e.touches && e.touches.length > 0) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } 
       else { clientX = e.clientX; clientY = e.clientY; }
-      const x = ((clientX - rect.left) / rect.width) * 1000;
+      const x = ((clientX - rect.left) / rect.width) * roomWidth;
       const y = ((clientY - rect.top) / rect.height) * 650;
       return { x, y };
     }
@@ -611,11 +756,14 @@
       if (!selectedTableId) return;
       const table = appData.tables.find(t => t.id === selectedTableId);
       if (!table) return;
+      const currentRoom = appData.rooms.find(r => r.id === appData.currentRoomId);
+      const roomWidth = currentRoom ? (currentRoom.width || 1000) : 1000;
+
       const step = 5;
       if (direction === 'up') table.y = Math.max(40, table.y - step);
       if (direction === 'down') table.y = Math.min(610, table.y + step);
       if (direction === 'left') table.x = Math.max(40, table.x - step);
-      if (direction === 'right') table.x = Math.min(960, table.x + step);
+      if (direction === 'right') table.x = Math.min(roomWidth - 40, table.x + step);
       renderRoom(); saveData();
     }
 
@@ -723,8 +871,11 @@
       const name = document.getElementById('new-table-name').value.trim() || `Tavolo ${appData.tables.length + 1}`;
       const shape = document.getElementById('new-table-shape').value;
       const maxSeats = parseInt(document.getElementById('new-table-seats').value) || 4;
+      const currentRoom = appData.rooms.find(r => r.id === appData.currentRoomId);
+      const roomWidth = currentRoom ? (currentRoom.width || 1000) : 1000;
+
       const newTable = {
-        id: 'table_' + Date.now(), roomId: appData.currentRoomId, name: name, x: 500, y: 325, maxSeats: maxSeats, occupiedSeats: Array(maxSeats).fill(false), shape: shape, scale: 1
+        id: 'table_' + Date.now(), roomId: appData.currentRoomId, name: name, x: roomWidth / 2, y: 325, maxSeats: maxSeats, occupiedSeats: Array(maxSeats).fill(false), shape: shape, scale: 1
       };
       appData.tables.push(newTable);
       document.getElementById('new-table-name').value = ''; 
@@ -750,7 +901,10 @@
       const coords = getSVGCoords(e);
       let newX = coords.x - dragOffset.x;
       let newY = coords.y - dragOffset.y;
-      table.x = Math.max(40, Math.min(960, newX));
+      const currentRoom = appData.rooms.find(r => r.id === appData.currentRoomId);
+      const roomWidth = currentRoom ? (currentRoom.width || 1000) : 1000;
+
+      table.x = Math.max(40, Math.min(roomWidth - 40, newX));
       table.y = Math.max(40, Math.min(610, newY));
       const g = document.getElementById(`table-group-${table.id}`);
       if (g) { g.setAttribute("transform", `translate(${table.x}, ${table.y}) scale(${table.scale || 1})`); }
@@ -811,7 +965,7 @@
     }
 
     function confirmResetToDemo() {
-      appData = { ...DEMO_DATA }; saveData(); deselectTable(); initializeRoomSelector(); initializeStyleSelector(); renderRoom(); updateGlobalStats(); closeResetModal();
+      appData = JSON.parse(JSON.stringify(DEMO_DATA)); saveData(); deselectTable(); initializeRoomSelector(); initializeStyleSelector(); updateRoomWidthDisplay(); renderRoom(); updateGlobalStats(); closeResetModal();
       showToast("Configurazione iniziale caricata.", "success");
     }
 
@@ -887,7 +1041,7 @@
         try {
           const parsed = JSON.parse(e.target.result);
           if (parsed.tables && Array.isArray(parsed.tables)) {
-            appData = parsed; saveData(); initializeRoomSelector(); initializeStyleSelector(); renderRoom(); updateGlobalStats(); showToast("Nuovo layout caricato correttamente!", "success");
+            appData = parsed; saveData(); initializeRoomSelector(); initializeStyleSelector(); updateRoomWidthDisplay(); renderRoom(); updateGlobalStats(); showToast("Nuovo layout caricato correttamente!", "success");
           } else { showToast("File JSON non valido: struttura mancante.", "warning"); }
         } catch (err) { showToast("Errore di lettura del file JSON.", "rose"); }
       };
