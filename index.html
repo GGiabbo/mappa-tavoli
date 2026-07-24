@@ -524,6 +524,7 @@
 
     window.addEventListener("load", async () => {
 
+      setTimeout(async () => {
       await loadData();
 
       initializeRoomSelector();
@@ -532,6 +533,8 @@
       updateRoomWidthDisplay();
       renderRoom();
       updateGlobalStats();
+
+      }, 500);
 
     });
 
