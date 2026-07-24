@@ -427,8 +427,8 @@
 
   <!-- JS LOGIC -->
 
-  <script type="module">
 
+  <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 
     import {
@@ -437,6 +437,17 @@
       getDoc,
       setDoc
     } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+
+
 
     const firebaseConfig = {
       apiKey: "AIzaSyCMlFfXrqLagyMt_mlmZksJg3K6SfSkC2M",
@@ -448,8 +459,33 @@
     };
 
     const app = initializeApp(firebaseConfig);
+
     const db = getFirestore(app);
 
+    const auth = getAuth(app);
+
+
+    window.db = db;
+
+    window.doc = doc;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+
+    window.auth = auth;
+
+    window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+    window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+    window.signOut = signOut;
+    window.onAuthStateChanged = onAuthStateChanged;
+
+
+    console.log("Firebase pronto");
+
+  </script>
+
+
+
+  <script type="module">
     const APP_STORAGE_KEY = 'RISTOMAP_PRO_DATA_V6';
 
     // Dati iniziali di esempio
